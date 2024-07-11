@@ -1,6 +1,10 @@
 import pandas as pd
 import numpy as np
+from tqdm import tqdm
 import utils # personal utility functions
+
+# visualize progress of pandas operations
+tqdm.pandas()
 
 class Processor():
     def __init__(self, data: pd.DataFrame = None) -> None:
@@ -80,23 +84,27 @@ class Processor():
         # if one of the long and lat is NaN, directly set the value to NaN.
 
         if 'merged_coord' not in self.__data.columns:
-            # TODO: this does not work as I thought, so I use a more stupid way below
-            self.__data['merged_coord'] = np.where(
-                self.__data.isna().any(axis=1),
-                np.nan,
-                list(zip(self.__data['lon_new'], self.__data['lat_new']))
-            )
+            # TODO: this does not work as I thought, so I use a more intuitive way below
+            # self.__data['merged_coord'] = np.where(
+            #     self.__data.isna().any(axis=1),
+            #     np.nan,
+            #     list(zip(self.__data['lon_new'], self.__data['lat_new']))
+            # )
+            print("> [Prepocess] Merging coordinates...")
+            self.__data['merged_coord'] = [
+                np.nan if np.isnan(lon) or np.isnan(lat) else (lon, lat) 
+                for (lon, lat) in tqdm(zip(self.__data['lon_new'], self.__data['lat_new']), total=self.__data.shape[0])
+            ]
 
-            # tmp = list(zip(self.__data['lon_new'], self.__data['lat_new']))
-            # self.__data['merged_coord'] = tmp
+        print("> Start matching the nearest points...")
+        # progress_map works the same as pandas map, only works after using 
+        # tqdm, used to track progress.
+        self.__data['results'] = self.__data['merged_coord'] \
+            .progress_map(lambda x: self.pt_vs_srs_dist(pt=x, srs=policy_points), na_action="ignore")
 
-
-        # self.__data['results'] = self.__data['merged_coord'].map(lambda x: self.pt_vs_srs_dist(pt=x, srs=policy_points))
-
-        # TODO: delete after the code works
-        # result = list(map(lambda x: add_and_multiply(x, y, z), numbers))
-        # squared = data.map(lambda x: x ** 2)
-
+        # TODO: split the results to three new columns, might want to first replace all np.nan
+        # with [np.nan, np.nan, np.nan] in case splitting does not ignore np.nan, worth doing 
+        # some research on this tho.
         # self.__data[f'seg_lon_{suffixes[ref_file_ver]}'] = ""
         # self.__data[f'seg_lat_{suffixes[ref_file_ver]}'] = ""
         # self.__data[f'segment_{suffixes[ref_file_ver]}'] = ""
@@ -108,7 +116,7 @@ class Processor():
 
         if is_thin:
             thin_list = ['address', 'longitude', 'latitude', 'lon_new', 'lat_new']
-            thin_list = ['lon_new', 'lat_new', 'merged_coord']
+            thin_list = ['lon_new', 'lat_new', 'results']
             data_to_show = data_to_show[thin_list]
 
         if topX:
@@ -133,7 +141,7 @@ def main():
     p = Processor(pd.read_stata(filepath))
     # p = Processor()
     p.coord_twd97towgs84()
-    for i in range(1):
+    for i in range(4):
         p.find_nearest_point(ref_file_ver=i+1)
     
     p.show_data(is_thin=True)
