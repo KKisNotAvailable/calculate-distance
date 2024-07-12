@@ -1,4 +1,6 @@
 Rental_geocode/
+*.csv
+*.dta
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

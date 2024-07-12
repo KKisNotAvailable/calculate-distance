@@ -29,7 +29,22 @@ def test_line_segment():
 
 
 def no_return():
-    print(1+1)
+    # Creating a DataFrame with a column containing lists and NaN values
+    data = {'column_to_split': [['a', 'b', 'c'], ['d', 'e'], np.nan, ['f', 'g', 'h', 'i']]}
+    df = pd.DataFrame(data)
+
+    # Filling NaN values with empty lists
+    df['column_to_split'] = df['column_to_split'].apply(lambda x: x if isinstance(x, list) else [])
+
+    # Splitting the column into multiple columns
+    split_columns = pd.DataFrame(df['column_to_split'].tolist())
+
+    # Adding the split columns back to the original DataFrame
+    df_split = df.drop(columns=['column_to_split']).join(split_columns)
+
+    print(df_split)
+
+
 
 
 def subset_check():
